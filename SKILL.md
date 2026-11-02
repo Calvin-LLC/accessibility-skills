@@ -12,8 +12,6 @@ Two jobs: measure a rendered page against WCAG 2.2 Level A and AA, and write
 code that passes. Source inspection alone never settles a criterion, so every
 report comes from a real browser run.
 
-Read `AGENTS.md` first for the layout and the rules that keep this skill small.
-
 ## Run the measurement
 
 ```
