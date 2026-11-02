@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { Connection } from "./cdp.mjs";
 import { Page } from "./page.mjs";
 
@@ -39,6 +40,39 @@ function findChrome(explicit) {
 		}
 	}
 	throw new Error("no Chromium-based browser on PATH; set CHROME_BIN or pass --chrome <path>");
+}
+
+function killGroup(child) {
+	try {
+		if (process.platform === "win32") child.kill("SIGKILL");
+		else process.kill(-child.pid, "SIGKILL");
+	} catch {}
+}
+
+function groupAlive(child) {
+	if (process.platform === "win32") return child.exitCode === null;
+	try {
+		process.kill(-child.pid, 0);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function removeProfile(profile) {
+	try {
+		rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	} catch (e) {
+		process.stderr.write(`warning: could not remove ${profile}: ${e.message}\n`);
+	}
+}
+
+function killOnExit(child, profile) {
+	process.once("exit", () => {
+		killGroup(child);
+		removeProfile(profile);
+	});
+	for (const [signal, code] of [["SIGINT", 130], ["SIGTERM", 143], ["SIGHUP", 129]]) process.once(signal, () => process.exit(code));
 }
 
 function waitForFile(path, child, timeoutMs) {
@@ -92,7 +126,8 @@ export async function openBrowser({ chrome, cdp: cdpArg } = {}) {
 			"about:blank",
 		];
 		if (process.getuid?.() === 0 || process.env.WCAG_NO_SANDBOX) args.splice(1, 0, "--no-sandbox");
-		child = spawn(bin, args, { stdio: "ignore" });
+		child = spawn(bin, args, { stdio: "ignore", detached: process.platform !== "win32" });
+		killOnExit(child, profile);
 		const [port, path] = await waitForFile(join(profile, "DevToolsActivePort"), child, 20000);
 		endpoint = `ws://127.0.0.1:${port}${path}`;
 	}
@@ -113,10 +148,11 @@ export async function openBrowser({ chrome, cdp: cdpArg } = {}) {
 				connection.close();
 			} catch {}
 			if (child) {
-				child.kill();
-				await new Promise((resolve) => (child.exitCode !== null ? resolve() : child.once("exit", resolve)));
+				killGroup(child);
+				const deadline = Date.now() + 10000;
+				while (groupAlive(child) && Date.now() < deadline) await sleep(20);
 			}
-			if (profile) rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+			if (profile) removeProfile(profile);
 		},
 	};
 }
