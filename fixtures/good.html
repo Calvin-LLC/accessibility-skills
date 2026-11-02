@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Order status - Example Shop</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+	:root { color-scheme: light; }
+	* { box-sizing: border-box; }
+	body { margin: 0; font: 1rem/1.5 system-ui, sans-serif; background: #fff; color: #1a1a1a; }
+	.skip { position: absolute; left: -9999px; top: 0; padding: 12px; background: #000; color: #fff; }
+	.skip:focus { left: 0; z-index: 10; }
+	header, main, footer { padding: 12px 16px; max-width: 60rem; margin: 0 auto; }
+	nav ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0; }
+	nav a, button, .btn { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; padding: 0 12px; }
+	a { color: #0b4fa8; }
+	a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #0b4fa8; outline-offset: 2px; }
+	button { background: #0b4fa8; color: #fff; border: 2px solid #0b4fa8; border-radius: 4px; font: inherit; }
+	input { min-height: 44px; border: 2px solid #595959; border-radius: 4px; padding: 0 8px; font: inherit; width: 100%; max-width: 24rem; }
+	input::placeholder { color: #595959; }
+	label { display: block; margin-top: 12px; }
+	.muted { color: #595959; }
+	.hero { background: #12306b; color: #fff; padding: 16px; }
+	table { border-collapse: collapse; width: 100%; }
+	th, td { text-align: left; padding: 8px; border-bottom: 1px solid #595959; }
+	.table-wrap { overflow-x: auto; }
+	.tip-wrap { position: relative; display: inline-block; }
+	.tip { position: absolute; top: 100%; left: 0; background: #1a1a1a; color: #fff; padding: 8px; display: none; min-width: 12rem; }
+	.tip-wrap.open .tip { display: block; }
+	@media (prefers-reduced-motion: no-preference) { .fade { animation: fade 0.4s ease-out 1; } }
+	@keyframes fade { from { opacity: 0.6 } to { opacity: 1 } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header>
+	<nav aria-label="Primary">
+		<ul>
+			<li><a href="#orders">Orders</a></li>
+			<li><a href="#returns">Returns</a></li>
+			<li><a href="#help">Help</a></li>
+		</ul>
+	</nav>
+</header>
+<main id="main">
+	<h1>Order status</h1>
+	<section class="hero fade"><h2>Your order ships Tuesday</h2><p>Track it any time from this page.</p></section>
+	<section id="orders">
+		<h2>Recent orders</h2>
+		<div class="table-wrap" role="region" aria-label="Recent orders" tabindex="0">
+			<table>
+				<caption class="muted">Orders from the last 30 days</caption>
+				<thead><tr><th scope="col">Order</th><th scope="col">Date</th><th scope="col">Status</th></tr></thead>
+				<tbody><tr><td>1042</td><td>Oct 12</td><td>Shipped</td></tr><tr><td>1043</td><td>Oct 20</td><td>Packing</td></tr></tbody>
+			</table>
+		</div>
+	</section>
+	<section id="returns">
+		<h2>Start a return</h2>
+		<form action="#" method="post">
+			<label for="name">Full name</label>
+			<input id="name" name="name" type="text" autocomplete="name" required>
+			<label for="email">Email</label>
+			<input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com">
+			<p><button type="submit">Send request</button></p>
+		</form>
+	</section>
+	<section id="help">
+		<h2>Help</h2>
+		<p>Questions? <a href="#help">Contact support about your order</a>.</p>
+		<span class="tip-wrap"><button type="button" aria-describedby="tip1">Shipping times</button><span id="tip1" role="tooltip" class="tip">Standard delivery takes 3 to 5 days.</span></span>
+	</section>
+</main>
+<footer><p class="muted">Example Shop, 2026</p></footer>
+<script>
+	const wrap = document.querySelector(".tip-wrap");
+	const open = () => wrap.classList.add("open");
+	const close = () => wrap.classList.remove("open");
+	let hoverTimer;
+	wrap.addEventListener("mouseenter", () => { clearTimeout(hoverTimer); open(); });
+	wrap.addEventListener("mouseleave", () => { hoverTimer = setTimeout(close, 150); });
+	wrap.addEventListener("focusin", open);
+	wrap.addEventListener("focusout", close);
+	document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+</script>
+</body>
+</html>

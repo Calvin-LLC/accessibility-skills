@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Home</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<style>
+	body { margin: 0; font: 16px/1.4 sans-serif; background: #fff; color: #111; }
+	header { background: #fff; padding: 8px 16px; }
+	.low { color: #999; }
+	.hero { background: linear-gradient(90deg, #fff, #222); height: 80px; }
+	.hero p { color: #888; margin: 0; padding: 20px; font-size: 18px; }
+	button.icon { width: 14px; height: 14px; padding: 0; border: 1px solid #333; background: #eee; }
+	.tiny-row { display: flex; gap: 2px; }
+	.tiny-row a { display: block; width: 12px; height: 12px; background: #36c; }
+	input.faint { border: 1px solid #ddd; background: #fff; }
+	:focus { outline: none; }
+	.card { width: 600px; height: 20px; overflow: hidden; background: #eee; }
+	.fixed-head { position: sticky; top: 0; height: 60px; background: #333; color: #fff; z-index: 5; }
+	.tip { position: absolute; display: none; background: #222; color: #fff; padding: 6px 8px; }
+	.has-tip:hover .tip { display: block; }
+	.has-tip { position: relative; display: inline-block; }
+	.clip { height: 18px; overflow: hidden; width: 120px; font-size: 14px; background: #ffd; }
+</style>
+</head>
+<body>
+<div class="fixed-head">sticky bar</div>
+<header>
+	<a href="/a">Products</a> <a href="/b">Pricing</a>
+</header>
+<h1>Broken page</h1>
+<h3>Skipped heading level</h3>
+<p class="low" id="lowtext">This paragraph is #999 on white: ratio 2.85 to 1 (expect 1.4.3 fail).</p>
+<div class="hero"><p id="gradtext">Text over a gradient that gets dark on the right</p></div>
+<img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" id="noalt">
+<img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="photo-1234.png" id="fnalt">
+<button class="icon" id="nolabel"></button>
+<a href="/x" id="emptylink"></a>
+<a href="/more1">Read more</a> <a href="/more2">Read more</a>
+<div class="tiny-row"><a href="/1" aria-label="one" id="t1"></a><a href="/2" aria-label="two"></a><a href="/3" aria-label="three"></a></div>
+<div id="divclick" onclick="document.title='x'" style="cursor:pointer">fake button (click only)</div>
+<div role="button" id="rolebtn">role button no tabindex</div>
+<form>
+	<input type="text" id="unlabeled" placeholder="Search things">
+	<input type="email" name="email" id="email" aria-label="Email address">
+	<input class="faint" type="text" aria-label="Faint border field">
+	<label for="p">Password</label><input type="password" id="p" onpaste="return false">
+	<button type="button" aria-label="Submit order" id="lic">Send</button>
+</form>
+<p class="has-tip" tabindex="0" id="tipwrap">Hover me<span class="tip" id="tip">Tooltip that vanishes</span></p>
+<div class="card" id="clipcard"><p>This text is taller than its fixed height container and will be cut off when the user changes text spacing, because the container has a fixed height with overflow hidden.</p></div>
+<div style="width:900px;background:#cfe;height:30px" id="wide">Fixed 900px wide block (breaks 320px reflow)</div>
+<div class="clip" id="clipbox">Long line that clips vertically when wrapped</div>
+<video autoplay loop src="data:video/mp4;base64,AAAA" id="vid"></video>
+<style>@keyframes spin2 { from { transform: translateX(0) } to { transform: translateX(40px) } } .mv { animation: spin2 0.2s linear infinite; width: 20px; height: 20px; background: red; }</style>
+<div class="mv" id="mover"></div>
+<p style="height:1400px">spacer</p>
+<a href="#last" style="display:block;margin-top:700px">end</a>
+<footer id="last">footer</footer>
+</body>
+</html>

@@ -210,7 +210,7 @@ WCAG 2.2 specific tests:
 
 Automated scan:
 
-- Run the browser verification in `scripts/a11y-check.sh` on each page.
+- Run `node scripts/wcag.mjs <url>` on each page and attach the JSON report.
 - Record error counts, types, pages, and severity.
 
 Bug reports include: short description, WCAG criterion, severity, page URL,

@@ -1,139 +1,138 @@
 ---
 name: wcag
-description: >
-  Fix and verify web accessibility against WCAG 2.2 Level A and AA.
-  Owns fix-time rules for HTML, CSS, and JS, copy-paste patterns, checklists,
-  and real browser verification through the Orca embedded browser (accessibility
-  tree, keyboard walk, computed contrast, targets, reflow). Use when writing or
-  reviewing user-facing code, or when asked to check accessibility. Reports only.
-  Never claims conformance from source inspection alone.
+description: Use when checking or fixing web accessibility (WCAG 2.2 A/AA). Measures a live page in Chromium, then fixes with rules and patterns.
 license: MIT
 metadata:
-  version: "2.0.0"
+  version: "3.0.0"
 ---
 
 # WCAG
 
-You make user-facing code accessible. You check real rendered pages in a real
-browser. You never claim conformance from reading source alone.
+Two jobs: measure a rendered page against WCAG 2.2 Level A and AA, and write
+code that passes. Source inspection alone never settles a criterion, so every
+report comes from a real browser run.
 
-Read `AGENTS.md` first. It names the references, the scripts, and the rules
-that keep this skill small. Load a reference only when the task needs it.
+Read `AGENTS.md` first for the layout and the rules that keep this skill small.
 
-## What this skill covers
-
-Fix-time accessibility for web UI. HTML structure, CSS presentation, JS
-interaction, plus checklists for dev, design, and QA. Browser verification
-runs through the Orca embedded browser. Static checks are the floor, the
-browser is the proof.
-
-This skill does not do security, supply chain, reliability, or test audits.
-That is the harden skill. If a `harden` report hands you an a11y finding,
-start from its file and line evidence and verify in the browser.
-
-## Facts that stay true
-
-WCAG 2.2 has 86 success criteria. Level A plus AA is 55. Parsing (4.1.1) was
-removed in 2.2, so never reference it.
-
-Contrast minimums: 4.5 to 1 for normal text, 3 to 1 for large text (18px or
-14px bold and up) and for UI components. Targets are 24 by 24 CSS px minimum.
-
-`px` for font size is fine. Browsers zoom `px`. Clipping at zoom is the real
-failure. Multiple `h1` elements are fine. These two are not findings.
-
-## Run it
+## Run the measurement
 
 ```
-wcag check <url>
-wcag check <url> --profile mobile
-wcag rules <path/to/file>
+node <skill-dir>/scripts/wcag.mjs <url|file.html> [options]
 ```
 
-`wcag check` opens the URL in the Orca browser and runs the verification
-runbook in `scripts/a11y-check.sh`. `wcag rules` prints the fix-time rules
-for one file type without opening a browser.
+Launches headless Chromium (any Chromium-based browser on `PATH`, or
+`CHROME_BIN`), runs nine checks, prints a JSON report on stdout and a short
+summary on stderr. Exit code: `0` no failures, `2` failures found, `1` the run
+broke.
 
-## Pipeline
+| Option | Use |
+|--------|-----|
+| `--viewport 390x844` | start at a phone size |
+| `--media prefers-color-scheme=dark,prefers-reduced-motion=reduce` | audit each theme and motion mode; run once per mode the product ships. Also `forced-colors`, `prefers-contrast` |
+| `--interact` | submit empty forms with every non-GET request blocked, then judge the error handling |
+| `--probe-keys` | press single keys with nothing focused to find shortcuts. This can trigger page actions, so use it on a dev server |
+| `--only a,b` / `--skip a,b` | pick checks by id |
+| `--cdp 9222` | attach to a running browser, for pages behind a login the user already holds |
+| `--out report.json` | write the JSON to a file |
+| `--list-criteria` | print the 55 Level A and AA criteria |
 
-```
-scope -> static rules -> browser verification -> report
-```
+Static files and `localhost` dev servers work the same. For a page behind a
+login, ask the user to sign in inside a browser started with
+`--remote-debugging-port`, then pass `--cdp`. Never type credentials.
 
-### 1. Static rules
+## What each check measures
 
-Pick the references the changed files need. Nothing else loads.
+| Check | Measures | Criteria |
+|-------|----------|----------|
+| `contrast` | Computed colour pairs with alpha, opacity, and ancestor backgrounds composited. Text over images or gradients is sampled from screenshots taken with the text hidden. Placeholders and field borders | 1.4.3, 1.4.11 |
+| `keyboard` | Real Tab key events. Records every stop, detects traps, compares before and after pixels for a focus indicator, samples whether a sticky element covers the focused one | 2.1.2, 2.4.7, 2.4.11, 2.4.3, 2.4.1 |
+| `targets` | Box geometry of every pointer target, with the 24 px spacing-circle test | 2.5.8 |
+| `reflow` | Re-lays the page at 320 px, at 200% zoom, and with the 1.4.12 text-spacing overrides; finds horizontal scroll and cut-off text; flips orientation | 1.4.10, 1.4.4, 1.4.12, 1.3.4 |
+| `ax-tree` | Chromium's accessibility tree: nameless controls, file-name alt text, vague links, heading skips, landmarks | 4.1.2, 1.1.1, 2.4.4, 1.3.1 |
+| `input-model` | DevTools event listeners: click-only divs, down-event actions, roles without keys, label in name, hover content dismissal and hoverability | 2.1.1, 2.5.2, 2.5.3, 1.4.13 |
+| `dom` | Page facts: lang, title, zoom lock, autoplay, refresh, autocomplete tokens, paste blocking, looping animation | 3.1.1, 2.4.2, 1.4.4, 1.4.2, 1.3.5, 3.3.8 |
+| `forms` | Empty submit with writes blocked: error text, association, `aria-invalid`, live-region announcement | 3.3.1, 4.1.3 |
+| `axe` | axe-core 4.14 with the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa` tags. Contrast and target size are left to the checks above | many |
 
-| Changed files | Reference |
-|---------------|-----------|
-| HTML, JSX, TSX, Vue, Svelte, templates | `references/wcag-html.md` |
-| CSS, SCSS, Less | `references/wcag-css.md` |
-| JS, TS, components with behavior | `references/wcag-js.md` |
-| Need a fix example | `references/patterns.md` |
-| Pre-commit, design review, QA signoff | `references/checklists.md` |
+`forms` runs only with `--interact`.
 
-`references/wcag-core.md` always loads. It holds the anti-patterns to block
-and the thresholds. Keep additions to the file-type references instead, so
-the baseline stays small.
+## Read the report
 
-### 2. Browser verification
+`criteria.rows` has one row for each of the 55 criteria:
 
-Run `scripts/a11y-check.sh <url>`. It drives the Orca browser: snapshot the
-accessibility tree, walk focus with the keyboard, measure computed contrast
-and target sizes, check reflow and zoom. It prints JSON and exits non-zero
-on violations.
+| Status | Meaning |
+|--------|---------|
+| `fail` | A check measured a failure. Report it with its `selector` and `snippet` |
+| `review` | A check found a candidate it cannot judge. A person decides |
+| `no-failures-found` | A check measured this criterion fully and found nothing |
+| `partial-no-failures` | Some aspects are automated and clean; the rest needs a person |
+| `manual` | No script settles it. See `references/manual-criteria.md` |
 
-The runbook paces Orca calls with short sleeps and one retry. The runtime
-drops connections under rapid calls and recovers on its own.
+`no-failures-found` is not conformance. Never write "passes WCAG" or "AA
+compliant". Write what ran: "no failures in the automated checks; N criteria
+need manual testing".
 
-Segment results by check:
+Each finding carries `sc`, `kind`, `check`, `selector`, `snippet`, `message`,
+and `measured` numbers where they exist. `alsoFlaggedBy` lists other checks
+that reported the same issue.
 
-- **tree:** roles and accessible names from the snapshot. Every interactive
-  node needs a name. Flag nameless controls with their ref and snippet.
-- **keyboard:** Tab order recorded through focus. Flag traps, skipped
-  controls, and focus that is not visible.
-- **contrast:** computed ratios from rendered styles, not source guesses.
-  Flag text below 4.5 to 1 (3 to 1 large) and components below 3 to 1.
-- **targets:** measured boxes. Flag interactive targets below 24 by 24 CSS
-  px, noting the documented exceptions for inline links.
-- **reflow:** 320 CSS px width and 200 percent zoom. Flag horizontal scroll
-  and clipped content.
-- **axe:** only if `scripts/axe-core.min.js` is present. Axe is one layer,
-  not the verdict. Manual eval checks above it stand on their own.
+## Procedure
 
-Mark each result `browser-verified` or `needs-manual`. Screen reader passes
-and real-device touch testing stay manual. Say so in the report.
+1. **Measure.** Run the script on every distinct template, not only the home
+   page: a form, a table, an open modal, each theme through `--media`. Done
+   when each template has a report and no check errored.
+2. **Triage.** Group `fail` findings by criterion, then by shared selector
+   pattern. One broken component repeated 30 times is one fix.
+3. **Fix with the rules.** Load only the references the files need:
 
-### 3. Report
+   | Changing | Reference |
+   |----------|-----------|
+   | HTML, JSX, Vue, Svelte, templates | `references/wcag-html.md` |
+   | CSS, SCSS | `references/wcag-css.md` |
+   | JS with behaviour | `references/wcag-js.md` |
+   | A widget (modal, tabs, menu, tooltip) | `references/patterns.md` |
+   | Colour, type, motion, layout decisions | `references/design.md` |
+   | What a script cannot settle | `references/manual-criteria.md` |
+
+   `references/wcag-core.md` always applies.
+4. **Re-measure.** Run the same command again. Done when every `fail` you
+   fixed is gone and no new one appeared.
+5. **Report** with the template below, keeping measured results apart from
+   manual follow-ups.
+
+## Report
 
 ```markdown
 # Accessibility report: [URL or path]
 
 ## Result
-[pass | issues found | needs-manual]
+[N criteria fail, N to review, N measured clean, N partly automated, N manual]
+Checks run: [ids]. Modes: [viewport, media features].
 
-## Browser checks
-| Check | Result | Evidence |
-|-------|--------|----------|
-| tree | | |
-| keyboard | | |
-| contrast | | |
-| targets | | |
-| reflow | | |
-| axe | | skipped or version |
+## Failures
+Per criterion: number and name, selector, measured value, smallest fix, pattern.
 
-## Issues
-Ordered by severity. Each one: criterion, file or node, what fails,
-smallest fix, and the pattern reference.
+## To review
+Candidates a person must judge, with the question to answer.
 
-## Manual follow-ups
-[screen reader pass, device touch, anything the browser could not settle]
+## Manual testing still required
+Screen reader pass, caption accuracy, alt-text quality, consistent
+navigation across pages, error-message wording. Name which were not done.
 ```
 
-Static assessment plus this report is still not a conformance claim. Say
-that on web projects: manual conformance verification remains required.
+## Boundaries
 
-## Fixes (not part of this run)
+- This skill measures and advises. It edits the user's code only when asked,
+  one fix at a time, each ending in a re-measure.
+- Design quality (hierarchy, type scale, palette, motion language) belongs to
+  impeccable. `references/design.md` says where the two meet and how to run
+  `impeccable detect` beside this script.
+- Security and supply-chain audits belong to harden.
 
-This skill reports. It does not edit the target repo. A follow-up that names
-issue IDs may apply one fix per commit, each ending in a browser re-check.
+## Facts that stay true
+
+WCAG 2.2 has 86 success criteria; Level A plus AA is 55 (31 A, 24 AA).
+4.1.1 Parsing was removed. Large text is 24 px, or 18.66 px bold. Normal text
+needs 4.5:1, large text and UI components 3:1. Targets are 24 by 24 CSS px
+unless an exception applies. `px` font sizes are not failures, and several
+`h1` elements are not failures.

@@ -14,7 +14,7 @@ Load when editing CSS, SCSS, Less, or Sass.
 | Content | Minimum ratio | Pass example | Fail example |
 |---------|---------------|-------------|-------------|
 | Normal text | 4.5:1 | #595959 on #fff (7:1) | #999 on #fff (2.8:1) |
-| Large text (18px and up, or 14px bold and up) | 3:1 | #767676 on #fff (4.5:1) | #aaa on #fff (2.3:1) |
+| Large text (24px and up, or 18.66px bold and up) | 3:1 | #949494 on #fff (3.03:1) | #aaa on #fff (2.32:1) |
 | UI components, borders, icons | 3:1 | #767676 on #fff | #ccc on #fff (1.6:1) |
 
 Color must never be the sole indicator of state. Combine it with text,
@@ -32,8 +32,11 @@ button, a, [role="button"] { min-width: 48px; min-height: 48px; }
 /* Minimum spacing between targets: 8px */
 ```
 
-Exceptions: inline text links, user-agent-controlled elements, essential
-small sizing.
+Exceptions to 2.5.8: the target has 24 CSS px of clear space (a 24 px circle
+centered on it touches no other target), an equivalent control exists, the
+target is an inline text link, the size is set by the user agent, or the size
+is essential. `scripts/checks/targets.mjs` applies the spacing test by
+geometry.
 
 ## Reflow (1.4.10)
 
@@ -58,13 +61,17 @@ small sizing.
 ## Reduced motion
 
 ```css
+.banner { animation: slide-in 400ms ease-out; }
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
-    }
+    .banner { animation: fade-in 200ms linear; }
 }
 ```
+
+Remove spatial movement (slides, parallax, zoom, looping drift) and keep
+opacity, color, and state changes that carry meaning. A blanket
+`animation-duration: 0.01ms !important` also erases feedback such as a
+confirmation fade and a progress change. Verify with
+`wcag.mjs <url> --media prefers-reduced-motion=reduce`.
 
 No animation may flash more than 3 times per second (2.3.1).
 

@@ -418,15 +418,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 ## 14. Reduced Motion
 
 ```css
+.toast { animation: toast-in 300ms cubic-bezier(0.16, 1, 0.3, 1); }
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
-    }
+    .toast { animation: toast-fade 150ms linear; }
 }
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px); } }
+@keyframes toast-fade { from { opacity: 0; } }
 ```
+
+Drop movement, keep the fade so the state change stays visible.
 
 ---
 

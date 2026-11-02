@@ -1,2 +1,0 @@
-# Keep shell runbooks LF-only so Git Bash and POSIX sh never see CRLF.
-scripts/*.sh text eol=lf

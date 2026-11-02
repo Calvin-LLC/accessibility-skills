@@ -1,84 +1,87 @@
 # WCAG
 
-An agent skill that makes web UI accessible and proves it in a real browser.
-It owns fix-time rules for HTML, CSS, and JS, copy-paste patterns, dev and
-design and QA checklists, and browser verification through the Orca embedded
-browser. It reports. It never edits your code.
+An agent skill that measures web accessibility in a real browser and fixes it
+against WCAG 2.2 Level A and AA. It drives headless Chromium over the DevTools
+protocol, so it needs no npm install and no screen reader.
 
-It covers WCAG 2.2 Level A and AA, 55 criteria out of 86 total. Static checks
-are the floor. The browser is the proof. Nothing here claims conformance from
-reading source alone.
+It covers the 55 Level A and AA criteria. Ten it settles by measurement, 31 it
+partly automates, and 14 it lists for manual testing.
+
+## Run it
+
+```bash
+node scripts/wcag.mjs https://your-site.com
+node scripts/wcag.mjs ./page.html --viewport 390x844
+node scripts/wcag.mjs http://localhost:3000 --media prefers-color-scheme=dark,prefers-reduced-motion=reduce
+node scripts/wcag.mjs http://localhost:3000 --interact --out report.json
+```
+
+Exit code `0` means no failures, `2` means failures, `1` means the run broke.
+The JSON report has one row per criterion plus every finding with its CSS
+selector, HTML snippet, and measured numbers.
+
+## What it measures
+
+| Check | How |
+|-------|-----|
+| Contrast | Computed colours with alpha and ancestor backgrounds composited. Text over images and gradients is sampled from screenshots taken with the text hidden |
+| Keyboard | Real Tab key events: traps, focus order, a pixel comparison for the focus indicator, focus covered by sticky elements |
+| Target size | Box geometry and the 24 px spacing-circle test |
+| Reflow | The page at 320 px, at 200% zoom, with the 1.4.12 text-spacing overrides, and in both orientations |
+| Accessibility tree | Chromium's own tree: nameless controls, bad alt text, vague links, heading skips |
+| Input model | DevTools event listeners: click-only elements, pointer-down actions, label in name, hover content that cannot be dismissed |
+| Page facts | lang, title, zoom lock, autoplay, refresh, autocomplete tokens, paste blocking, motion that ignores reduced-motion |
+| Forms | Empty submit with all writes blocked: error text, association, announcement |
+| axe-core | Version 4.14 with the WCAG 2.0, 2.1, and 2.2 tags |
+
+## Check it works
+
+```bash
+node scripts/verify.mjs
+```
+
+Runs the checker on `fixtures/` and asserts that each planted defect is found
+and that the clean page has no findings. About 90 seconds.
+
+## What it will not do
+
+- Claim conformance. A clean automated run still leaves 14 criteria and part
+  of 31 more to a person.
+- Judge meaning: alt-text quality, caption accuracy, error-message wording.
+- Replace a screen reader pass. `references/manual-criteria.md` lists the steps.
+- Edit your code unless you ask.
 
 ## Layout
 
 ```
-SKILL.md                 orchestrator: scope, verify, report
-AGENTS.md                host instructions for this repo
-references/wcag-core.md  always-loaded anti-patterns and thresholds
-references/wcag-html.md  structure, forms, media, ARIA
-references/wcag-css.md   focus, contrast, targets, reflow, motion
-references/wcag-js.md    keyboard, focus management, live regions
-references/patterns.md   copy-paste fixes for forms, modals, tabs, tooltips
-references/checklists.md dev, design, and QA lists in one file
-scripts/a11y-check.sh    Orca browser verification runbook, prints JSON
-scripts/vendor/          vendored axe-core for manual console runs
+SKILL.md                      procedure for agents
+scripts/wcag.mjs              runner
+scripts/checks/               one file per check
+scripts/lib/                  DevTools client, page driver, shared in-page helpers
+scripts/vendor/               axe-core
+data/criteria.json            Level A and AA criteria from w3.org
+fixtures/                     pages with known defects
+references/                   fix rules, patterns, checklists, design notes
 ```
-
-One tree works on every host. References load only when the changed files
-need them. The core file stays small because it loads on every run.
-
-## Run it
-
-```
-wcag check <url>
-wcag check <url> --profile mobile
-wcag rules <path/to/file>
-```
-
-`wcag check` opens the URL in the Orca browser and runs
-`scripts/a11y-check.sh`. The script snapshots the accessibility tree, walks
-focus with the keyboard, measures computed contrast and target sizes, checks
-reflow and zoom, and prints one JSON report. It exits 1 when it finds
-violations and 0 when the page is clean.
-
-```bash
-scripts/a11y-check.sh https://your-site.com
-A11Y_REFLOW_DEVICE="iPhone 12" scripts/a11y-check.sh https://your-site.com
-```
-
-The second form adds a narrow-viewport reflow check on a named Orca device
-profile. `A11Y_PACE` sets seconds between Orca calls (default 2).
-`ORCA_BIN` points at the CLI when it is not on PATH.
-
-Screen reader passes and real-device touch testing stay manual. The report
-lists them as follow-ups.
-
-## What it will not do
-
-- Claim conformance from source inspection alone
-- Treat multiple `h1` elements or `px` font sizes as failures
-- Invent contrast ratios or target sizes without measuring them
-- Edit the target repo; fixes are a follow-up that names issue IDs
 
 ## Install
-
-Point your Agent Skills host at a clone of this repo. Hosts look for
-`SKILL.md`.
 
 ```bash
 git clone https://github.com/Calvin-LLC/WCAG-2.2-made-easy.git
 ```
 
-Then copy or symlink the checkout into your host's skills path, or load it
-straight from the clone.
+Point your Agent Skills host at the clone. It looks for `SKILL.md`.
+
+Requires Node 22 or newer and a Chromium-based browser on `PATH` (or set
+`CHROME_BIN`). Pass `--cdp <port>` to use a browser that is already running.
 
 ## References
 
-- [WCAG 2.2 spec](https://www.w3.org/TR/WCAG22/)
+- [WCAG 2.2](https://www.w3.org/TR/WCAG22/)
+- [axe-core](https://github.com/dequelabs/axe-core)
 - [WebAIM](https://webaim.org/)
-- [A11Y Project](https://www.a11yproject.com/)
 - [MDN Accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
 
 ## License
 
-MIT
+MIT. `scripts/vendor/axe.min.js` is MPL-2.0; its license is beside it.

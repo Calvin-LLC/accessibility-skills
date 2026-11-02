@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Theme and motion</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+	:root { color-scheme: light dark; --fg: #1a1a1a; --bg: #fff; --muted: #595959; }
+	@media (prefers-color-scheme: dark) { :root { --fg: #eee; --bg: #111; --muted: #555; } }
+	body { margin: 0; padding: 16px; font: 16px/1.5 sans-serif; background: var(--bg); color: var(--fg); }
+	.muted { color: var(--muted); }
+	@keyframes drift { from { transform: translateX(0) } to { transform: translateX(30px) } }
+	.drift { width: 20px; height: 20px; background: #c00; animation: drift 2s ease-in-out infinite alternate; }
+	.calm { width: 20px; height: 20px; background: #06c; animation: drift 2s ease-in-out infinite alternate; }
+	@media (prefers-reduced-motion: reduce) { .calm { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+	<h1>Theme and motion</h1>
+	<p class="muted">Muted text: 7:1 in light, 2.5:1 in dark.</p>
+	<div class="drift" id="drift"></div>
+	<div class="calm" id="calm"></div>
+</main>
+</body>
+</html>

@@ -31,7 +31,7 @@ Enforce WCAG 2.2 Level A and AA on all user-facing code. 55 criteria total
 | Metric | Value | Criterion |
 |--------|-------|-----------|
 | Text contrast (normal) | 4.5:1 | 1.4.3 |
-| Text contrast (large: 18px and up, or 14px bold and up) | 3:1 | 1.4.3 |
+| Text contrast (large: 24px and up, or 18.66px bold and up; 18pt / 14pt bold) | 3:1 | 1.4.3 |
 | UI component and graphic contrast | 3:1 | 1.4.11 |
 | Minimum target size | 24x24 CSS px | 2.5.8 |
 | Recommended target size | 44-48px | best practice |

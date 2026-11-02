@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trap and edge cases</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+	body { margin: 0; font: 16px/1.5 sans-serif; padding: 16px; background: #fff; color: #111; }
+	a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid #05c; outline-offset: 2px; }
+	main { display: block; }
+	.pass-477 { color: #777; }
+	.pass-454 { color: #767676; }
+	.big-fail { color: #aaa; font-size: 24px; }
+	.big-pass { color: #949494; font-size: 24px; }
+	input.ph { border: 2px solid #444; min-height: 44px; }
+	input.ph::placeholder { color: #aaa; }
+	.spaced { width: 220px; height: 2.4em; overflow: hidden; background: #eef; line-height: 1.2; }
+	.pop { position: relative; display: inline-block; }
+	.pop .box { display: none; position: absolute; top: 0; left: 150%; background: #222; color: #fff; padding: 8px; width: 12rem; }
+	.pop:hover .box { display: block; }
+	.pop:hover::after { content: ""; position: absolute; left: 100%; top: 0; width: 20px; height: 100%; }
+	.mover { position: relative; display: inline-block; }
+	.mover .tip2 { display: none; position: absolute; top: 120%; left: 0; background: #222; color: #fff; padding: 8px; width: 12rem; }
+	.mover:hover .tip2 { display: block; }
+	.pointerdown { padding: 12px; background: #def; display: inline-block; }
+</style>
+</head>
+<body>
+<main>
+<div class="rest">
+<h1>Edge cases</h1>
+<p class="pass-477">Contrast #777 on white: 4.48 to 1, must fail</p>
+<p class="pass-454">Contrast #767676 on white: 4.54 to 1, must pass</p>
+<p class="big-fail">Large #aaa: 2.32 to 1, must fail at 3</p>
+<p class="big-pass">Large #949494: 3.03 to 1, must pass at 3</p>
+<input class="ph" placeholder="Faint placeholder" aria-label="Faint placeholder field">
+<div class="spaced" id="spaced">Fits in two lines until spacing grows.</div>
+
+<h2>Keyboard trap</h2>
+<input id="trap" aria-label="Trapped field" onkeydown="if(event.key==='Tab'){event.preventDefault();}">
+<a href="#after">After the trap</a>
+
+<h2>Positive tabindex</h2>
+<a href="#x" tabindex="3">Jumps the queue</a>
+
+<h2>Down-event action</h2>
+<div class="pointerdown" id="pd" role="button" tabindex="0" onmousedown="document.title='fired'">Fires on mousedown</div>
+
+<h2>Popup that vanishes when hovered</h2>
+<span class="pop" id="pop"><button type="button">Hover for help</button><span class="box" id="popbox">Help text</span></span>
+<br>
+<span class="mover" id="mov"><button type="button">Plain tooltip</button><span class="tip2" id="tip2">Tooltip</span></span>
+
+<h2>Select that navigates on change</h2>
+<select onchange="location.href=this.value" aria-label="Go to"><option value="#a">A</option><option value="#b">B</option></select>
+<p id="after">After</p>
+</div>
+</main>
+</body>
+</html>

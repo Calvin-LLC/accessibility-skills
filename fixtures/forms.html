@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Forms</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{font:16px/1.5 sans-serif;padding:16px} input,button{min-height:44px;font:inherit} .err{color:#a00} input:focus-visible,button:focus-visible{outline:3px solid #05c}</style>
+</head>
+<body>
+<main>
+<h1>Forms</h1>
+
+<form id="native" action="/post" method="post">
+	<label for="n1">Native required</label><input id="n1" name="n1" required autocomplete="name">
+	<button type="submit">Send native</button>
+</form>
+
+<form id="silent" novalidate onsubmit="event.preventDefault(); this.querySelector('input').style.borderColor='red'">
+	<label for="s1">Silent failure</label><input id="s1" name="s1" required autocomplete="email">
+	<button type="submit">Send silent</button>
+</form>
+
+<form id="unlinked" novalidate onsubmit="event.preventDefault(); this.insertAdjacentHTML('beforeend','<p class=err id=u-err>Please enter your name</p>')">
+	<label for="u1">Unlinked error</label><input id="u1" name="u1" required autocomplete="given-name">
+	<button type="submit">Send unlinked</button>
+</form>
+
+<form id="good" novalidate onsubmit="event.preventDefault(); const i=this.querySelector('input'); i.setAttribute('aria-invalid','true'); i.setAttribute('aria-describedby','g-err'); document.getElementById('g-err').textContent='Enter your family name'; i.focus()">
+	<label for="g1">Good error</label><input id="g1" name="g1" required autocomplete="family-name" aria-describedby="g-err">
+	<span id="g-err" class="err" role="alert"></span>
+	<button type="submit">Send good</button>
+</form>
+</main>
+</body>
+</html>
