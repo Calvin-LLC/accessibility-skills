@@ -1,33 +1,6 @@
 # Design decisions that decide accessibility
 
-Load this when choosing colour, type, spacing, motion, or layout. It names
-where `impeccable` and this skill overlap, and which one wins a conflict.
-
-## Division of work
-
-| Question | Owner |
-|----------|-------|
-| Is the page accessible to WCAG 2.2 A/AA? | wcag. Measured by `scripts/wcag.mjs` |
-| Does the page look designed, with a hierarchy, a palette, a type scale? | impeccable |
-| A choice satisfies both | Take it. Nothing to resolve |
-| impeccable's taste conflicts with a WCAG number | WCAG wins; the number is a floor |
-| WCAG passes but impeccable flags the design as generic | Not an accessibility finding. Hand it to impeccable |
-
-## Run both on one page
-
-```
-node <wcag-dir>/scripts/wcag.mjs <url> --out wcag.json
-<impeccable-dir>/scripts/impeccable detect --json <url>
-```
-
-`impeccable detect` reports heading skips, tiny text, line length, text
-occlusion, and low contrast from the DOM. `wcag.mjs` measures the same
-contrast with ancestor alpha and image sampling, so when the two disagree on
-a ratio, trust the one that names a composited backdrop. Do not report the
-same defect twice; keep the wcag finding, since it carries the criterion.
-
-Impeccable's detector has no keyboard walk, no focus-indicator comparison, no
-reflow at 320 px, and no target-size test. Those come only from this skill.
+Load this when choosing colour, type, spacing, motion, or layout.
 
 ## Colour
 
@@ -36,13 +9,12 @@ reflow at 320 px, and no target-size test. Those come only from this skill.
   until the pair passes instead of adding a one-off override.
 - Muted and secondary text is where most failures sit. Hold it to 4.5:1,
   derived from the surface hue, not a neutral grey.
-- Light and dark themes are separate designs. Measure each with
-  `--media prefers-color-scheme=dark`. A token that passes in light often
-  fails in dark.
+- Light and dark themes are separate designs. The script measures both. A
+  token that passes in light often fails in dark.
 - Check disabled, hover, selected, error, and placeholder states. Disabled
   controls are exempt from 1.4.3; placeholders are not.
 - Meaning carried by colour needs a second cue: text, an icon, a shape, a
-  position (1.4.1). Impeccable's colour guidance asks for the same.
+  position (1.4.1).
 - Translucent layers make contrast depend on what is behind them. Prefer an
   explicit colour. `contrast` composites alpha, but a person reading a design
   file cannot.
@@ -54,9 +26,8 @@ reflow at 320 px, and no target-size test. Those come only from this skill.
 
 - Body text 16 px or larger on mobile. 24 px, or 18.66 px bold, counts as
   large text.
-- Measure 45 to 75 characters. Justified text and tight leading are
-  impeccable findings that also hurt readability (1.4.12 breaks when a
-  fixed-height box clips taller text).
+- Measure 45 to 75 characters. Justified text and tight leading hurt
+  readability, and 1.4.12 breaks when a fixed-height box clips taller text.
 - Never put text in a fixed-height container with `overflow: hidden`.
   `reflow` applies the 1.4.12 overrides and flags the clip.
 - Do not lock zoom. `maximum-scale` under 2 or `user-scalable=no` fails 1.4.4.
@@ -66,9 +37,8 @@ reflow at 320 px, and no target-size test. Those come only from this skill.
 ## Motion
 
 - Every looping or entrance animation needs a `prefers-reduced-motion` path.
-  Reduce movement, keep opacity and state changes. impeccable's animate
-  guidance says the same; `dom` reports loops that ignore the preference when
-  you pass `--media prefers-reduced-motion=reduce`.
+  Reduce movement, keep opacity and state changes. `dom` reports loops that
+  ignore the preference in the reduced-motion pass.
 - Nothing flashes more than three times a second (2.3.1). No script measures
   this reliably; keep rapid alternation out of the design.
 - Auto-starting motion that lasts over five seconds needs a visible pause
@@ -95,9 +65,7 @@ reflow at 320 px, and no target-size test. Those come only from this skill.
 
 - One focus ring for the whole product, 2 px or thicker, at least 3:1 against
   both the element and its surroundings, using `:focus-visible`.
-- Theme the ring from the palette. impeccable's craft floor lists focus rings
-  among the browser surfaces to style; do that with `outline`, not by removing
-  it.
+- Theme the ring from the palette with `outline`, not by removing it.
 - `keyboard` compares pixels with and without focus. A ring whose strongest
   changed pixel contrasts under 3:1 with the unfocused pixel is flagged for
   review, and a ring that changes nothing fails 2.4.7.

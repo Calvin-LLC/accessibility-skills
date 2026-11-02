@@ -1,17 +1,19 @@
 # wcag
 
-An agent skill that measures a web page against WCAG 2.2 Level A and AA in
-headless Chromium, then helps you fix what fails. It covers all 55 criteria. It
-measures 10 outright, partly automates 31, and lists 14 for a person to test.
-It never edits your code unless you ask.
+A skill that checks a web page against WCAG 2.2 Level A and AA in a real
+browser, fixes what fails, and checks again. It covers all 55 criteria. It
+measures 10 outright, partly automates 34, and lists 11 for a person to test.
+
+Everything the skill needs is in this folder. It has no options: you run it and
+it does the whole job.
 
 ## Setup
 
 Clone this repo into your coding agent's skills folder, in a folder named
 `wcag`, then start a new session.
 
-| Agent | Clone into | Invoke |
-|-------|------------|--------|
+| Agent | Clone into | Run |
+|-------|------------|-----|
 | Claude Code | `~/.claude/skills/wcag` | `/wcag` |
 | Codex | `~/.agents/skills/wcag` | `$wcag` |
 | OpenClaw | `~/.openclaw/skills/wcag` | `/wcag` |
@@ -21,6 +23,12 @@ Clone this repo into your coding agent's skills folder, in a folder named
 
 ```bash
 git clone https://github.com/Calvin-LLC/accessibility-skills ~/.claude/skills/wcag
+```
+
+Then tell it the page:
+
+```
+/wcag http://localhost:3000
 ```
 
 Needs Node 22 or newer and a Chromium-based browser on your `PATH`.

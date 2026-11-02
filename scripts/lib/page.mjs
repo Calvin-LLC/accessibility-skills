@@ -149,6 +149,28 @@ export class Page {
 		await this.eval(() => __w.settle());
 	}
 
+	async blockWrites() {
+		let blocked = 0;
+		await this.send("Fetch.enable", { patterns: [{ urlPattern: "*" }] });
+		const off = this.connection.subscribe((m) => {
+			if (m.sessionId !== this.sessionId || m.method !== "Fetch.requestPaused") return;
+			const { requestId, request } = m.params;
+			if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") {
+				this.send("Fetch.continueRequest", { requestId }).catch(() => {});
+			} else {
+				blocked++;
+				this.send("Fetch.failRequest", { requestId, errorReason: "BlockedByClient" }).catch(() => {});
+			}
+		});
+		return {
+			count: () => blocked,
+			stop: async () => {
+				off();
+				await this.send("Fetch.disable").catch(() => {});
+			},
+		};
+	}
+
 	async emulateMedia(features) {
 		await this.send("Emulation.setEmulatedMedia", { features });
 	}

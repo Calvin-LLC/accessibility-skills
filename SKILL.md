@@ -1,44 +1,36 @@
 ---
 name: wcag
-description: Use when checking or fixing web accessibility (WCAG 2.2 A/AA). Measures a live page in Chromium, then fixes with rules and patterns.
+description: Use when checking or fixing web accessibility (WCAG 2.2 A/AA). Measures a page in a real browser across five passes, then fixes it with rules and patterns.
 license: MIT
 metadata:
-  version: "3.0.1"
+  version: "4.0.0"
 ---
 
 # WCAG
 
-Two jobs: measure a rendered page against WCAG 2.2 Level A and AA, and write
-code that passes. Source inspection alone never settles a criterion, so every
-report comes from a real browser run.
+Invoking this skill measures the page you name against WCAG 2.2 Level A and AA,
+fixes what fails, and measures again. It takes no options. The user gives a URL,
+a local file, or a dev-server address. If they give none, ask for one.
 
-## Run the measurement
+Source inspection alone never settles a criterion, so every report comes from a
+real browser run.
+
+## Measure
 
 ```
-node <skill-dir>/scripts/wcag.mjs <url|file.html> [options]
+node <skill-dir>/scripts/wcag.mjs <url|file.html>
 ```
 
-Launches headless Chromium (any Chromium-based browser on `PATH`, or
-`CHROME_BIN`), runs nine checks (`forms` only with `--interact`), prints a JSON report on stdout and a short
-summary on stderr. Exit code: `0` no failures, `2` failures found, `1` the run
-broke.
+Needs Node 22 or newer and a Chromium-based browser on `PATH` (or `CHROME_BIN`
+set to its path). The script runs nine checks in five passes: desktop 1280x800,
+phone 390x844, dark colour scheme, reduced motion, and forced colours. A run takes
+about a minute. It prints a summary on stdout and writes the full JSON to
+`.tmp/wcag/report.json` in the working directory. Exit code: `0` no failures,
+`2` failures found, `1` the run broke.
 
-| Option | Use |
-|--------|-----|
-| `--viewport 390x844` | start at a phone size |
-| `--media prefers-color-scheme=dark,prefers-reduced-motion=reduce` | audit each theme and motion mode; run once per mode the product ships. Also `forced-colors`, `prefers-contrast` |
-| `--interact` | submit empty forms with every non-GET request blocked, then judge the error handling |
-| `--probe-keys` | press single keys with nothing focused to find shortcuts. This can trigger page actions, so use it on a dev server |
-| `--only a,b` / `--skip a,b` | pick checks by id |
-| `--cdp 9222` | attach to a running browser, for pages behind a login the user already holds |
-| `--out report.json` | write the JSON to a file |
-| `--list-criteria` | print the 55 Level A and AA criteria |
-
-Static files and `localhost` dev servers work the same. For a page behind a
-login, ask the user to sign in inside a browser started with
-`--remote-debugging-port`, then pass `--cdp`. Never type credentials.
-
-## What each check measures
+Every non-GET request is blocked during form submits and key presses, so a run
+changes nothing on the server. For a page behind a login, point the script at a
+static copy of the rendered page.
 
 | Check | Measures | Criteria |
 |-------|----------|----------|
@@ -47,14 +39,14 @@ login, ask the user to sign in inside a browser started with
 | `targets` | Box geometry of every pointer target, with the 24 px spacing-circle test | 2.5.8 |
 | `reflow` | Re-lays the page at 320 px, at 200% zoom, and with the 1.4.12 text-spacing overrides; finds horizontal scroll and cut-off text; flips orientation | 1.4.10, 1.4.4, 1.4.12, 1.3.4 |
 | `ax-tree` | Chromium's accessibility tree: nameless controls, file-name alt text, vague links, heading skips, landmarks | 4.1.2, 1.1.1, 2.4.4, 1.3.1 |
-| `input-model` | DevTools event listeners: click-only divs, down-event actions, roles without keys, label in name, hover content dismissal and hoverability | 2.1.1, 2.5.2, 2.5.3, 1.4.13 |
+| `input-model` | DevTools event listeners: click-only divs, down-event actions, roles without keys, label in name, hover content dismissal and hoverability. In the first pass it also presses single keys with nothing focused to find shortcuts | 2.1.1, 2.5.2, 2.5.3, 1.4.13, 2.1.4 |
 | `dom` | Page facts: lang, title, zoom lock, autoplay, refresh, autocomplete tokens, paste blocking, looping animation | 3.1.1, 2.4.2, 1.4.4, 1.4.2, 1.3.5, 3.3.8 |
-| `forms` | Empty submit with writes blocked: error text, association, `aria-invalid`, live-region announcement | 3.3.1, 4.1.3 |
+| `forms` | First pass only. Empty submit: error text, association, `aria-invalid`, live-region announcement | 3.3.1, 4.1.3 |
 | `axe` | axe-core 4.14 with the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa` tags. Contrast and target size are left to the checks above | many |
 
-`forms` runs only with `--interact`. In a default run the report has 10
-`no-failures-found`, 31 `partial-no-failures`, and 14 `manual` rows. `--interact`
-moves 3.3.1, 3.3.3, and 4.1.3 from `manual` to `partial-no-failures`.
+A clean page reports 10 criteria `no-failures-found`, 34 `partial-no-failures`,
+and 11 `manual`. `contrast` skips the forced-colours pass, because that mode
+replaces the author's colours.
 
 ## Read the report
 
@@ -73,14 +65,13 @@ compliant". Write what ran: "no failures in the automated checks; N criteria
 need manual testing".
 
 Each finding carries `sc`, `kind`, `check`, `selector`, `snippet`, `message`,
-and `measured` numbers where they exist. `alsoFlaggedBy` lists other checks
-that reported the same issue.
+`passes` (the passes that saw it), and `measured` numbers where they exist.
+`alsoFlaggedBy` lists other checks that reported the same issue.
 
 ## Procedure
 
-1. **Measure.** Run the script on every distinct template, not only the home
-   page: a form, a table, an open modal, each theme through `--media`. Done
-   when each template has a report and no check errored.
+1. **Measure.** Run the script on every distinct template the user names, not
+   only the home page. Done when each has a report and no check errored.
 2. **Triage.** Group `fail` findings by criterion, then by shared selector
    pattern. One broken component repeated 30 times is one fix.
 3. **Fix with the rules.** Load only the references the files need:
@@ -107,7 +98,7 @@ that reported the same issue.
 
 ## Result
 [N criteria fail, N to review, N measured clean, N partly automated, N manual]
-Checks run: [ids]. Modes: [viewport, media features].
+Passes run: [names].
 
 ## Failures
 Per criterion: number and name, selector, measured value, smallest fix, pattern.
@@ -122,12 +113,8 @@ navigation across pages, error-message wording. Name which were not done.
 
 ## Boundaries
 
-- This skill measures and advises. It edits the user's code only when asked,
-  one fix at a time, each ending in a re-measure.
-- Design quality (hierarchy, type scale, palette, motion language) belongs to
-  impeccable. `references/design.md` says where the two meet and how to run
-  `impeccable detect` beside this script.
-- Security and supply-chain audits belong to harden.
+This skill measures and advises. It edits the user's code only to fix a
+failure it measured, one fix at a time, each ending in a re-measure.
 
 ## Facts that stay true
 

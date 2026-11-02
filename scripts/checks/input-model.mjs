@@ -112,7 +112,8 @@ export default {
 		for (const k of keys)
 			findings.push({ sc: "2.1.4", kind: "review", check: "input:accesskey", selector: k.selector, snippet: k.snippet, message: `accesskey="${k.ak}" is a single-character shortcut; confirm it can be remapped or only works while the element has focus` });
 
-		if (ctx.probeKeys) {
+		if (ctx.first) {
+			const writes = await page.blockWrites();
 			const keys = "abcdefghijklmnopqrstuvwxyz0123456789/?.,;'[]-=".split("");
 			const fired = [];
 			await page.eval(() => {
@@ -132,6 +133,7 @@ export default {
 				if (before.href !== after.href) await page.goto(ctx.url);
 			}
 			await page.eval(() => window.__w_obs?.disconnect());
+			await writes.stop();
 			if (fired.length)
 				findings.push({ sc: "2.1.4", kind: "review", check: "input:single-key-shortcut", selector: "document", snippet: "", message: `pressing ${fired.map((k) => `"${k}"`).join(", ")} with nothing focused changed the page; confirm each shortcut can be turned off or remapped, or only works while its component has focus` });
 		}

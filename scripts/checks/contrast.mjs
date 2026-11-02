@@ -4,7 +4,8 @@ const LARGE_BOLD_PX = 18.66;
 export default {
 	id: "contrast",
 	covers: { "1.4.3": "measured", "1.4.11": "partial" },
-	async run(page) {
+	async run(page, ctx) {
+		if (ctx.media.some((m) => m.name === "forced-colors")) return { findings: [], note: "skipped: forced colours replace the author colours" };
 		const scan = await page.eval((K) => {
 			const LARGE_PX = K.largePx;
 			const LARGE_BOLD_PX = K.largeBoldPx;

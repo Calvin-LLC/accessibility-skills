@@ -17,7 +17,7 @@ the browser, the OS, and the assistive technology used.
 | 3.2.3 Consistent Navigation | Compare the navigation order across three pages |
 | 3.2.4 Consistent Identification | Same function, same label and icon, on every page |
 | 3.2.6 Consistent Help | Help link or chat sits in the same relative place across pages |
-| 3.3.1 Error Identification | Submit with `--interact`; then judge whether the wording names the field and the problem |
+| 3.3.1 Error Identification | The script submits empty forms; judge whether the wording names the field and the problem |
 | 3.3.3 Error Suggestion | Each error says how to fix it, where the fix is known |
 | 3.3.4 Error Prevention | Legal, financial, and delete actions can be reviewed, confirmed, or undone |
 | 3.3.7 Redundant Entry | A multi-step flow does not ask for the same value twice |
@@ -56,6 +56,6 @@ The script finds candidates; a person decides:
 
 - Touch: tap every control on a phone; confirm gestures and the 44 px
   comfort size.
-- Forced colours: `--media forced-colors=active` approximates Windows High
-  Contrast. Confirm icons and borders survive on a real Windows machine.
+- Forced colours: the script runs a forced-colors pass, which approximates
+  Windows High Contrast. Confirm icons and borders survive on a real Windows machine.
 - Zoom: browser zoom to 400% on a desktop, not only a narrow viewport.

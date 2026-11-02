@@ -70,8 +70,8 @@ geometry.
 Remove spatial movement (slides, parallax, zoom, looping drift) and keep
 opacity, color, and state changes that carry meaning. A blanket
 `animation-duration: 0.01ms !important` also erases feedback such as a
-confirmation fade and a progress change. Verify with
-`wcag.mjs <url> --media prefers-reduced-motion=reduce`.
+confirmation fade and a progress change. The script's
+reduced-motion pass verifies this.
 
 No animation may flash more than 3 times per second (2.3.1).
 

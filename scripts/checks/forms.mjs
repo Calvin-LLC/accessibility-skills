@@ -2,22 +2,11 @@ const MAX_FORMS = 6;
 
 export default {
 	id: "forms",
+	once: true,
 	covers: { "3.3.1": "partial", "3.3.3": "partial", "4.1.3": "partial", "3.3.2": "partial" },
-	interactive: true,
 	async run(page) {
 		const findings = [];
-		let blocked = 0;
-		await page.send("Fetch.enable", { patterns: [{ urlPattern: "*" }] });
-		const off = page.connection.subscribe((m) => {
-			if (m.sessionId !== page.sessionId || m.method !== "Fetch.requestPaused") return;
-			const { requestId, request } = m.params;
-			if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") {
-				page.send("Fetch.continueRequest", { requestId }).catch(() => {});
-			} else {
-				blocked++;
-				page.send("Fetch.failRequest", { requestId, errorReason: "BlockedByClient" }).catch(() => {});
-			}
-		});
+		const writes = await page.blockWrites();
 
 		try {
 			const forms = await page.eval((max) => {
@@ -112,10 +101,9 @@ export default {
 					findings.push({ sc: "3.3.1", kind: "review", check: "forms:focus-left-form", selector: form.selector, snippet: "", message: "after a failed submit focus is outside the form; confirm the user is told where the errors are" });
 			}
 		} finally {
-			off();
-			await page.send("Fetch.disable").catch(() => {});
+			await writes.stop();
 			await page.eval(() => window.__w_obs?.disconnect());
 		}
-		return { findings, note: `submitted empty forms with writes blocked (${blocked} blocked requests)` };
+		return { findings, note: `submitted empty forms with writes blocked (${writes.count()} blocked requests)` };
 	},
 };

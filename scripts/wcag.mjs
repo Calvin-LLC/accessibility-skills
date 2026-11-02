@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { openBrowser } from "./lib/browser.mjs";
-import { CRITERIA, STATUS, summarize } from "./lib/criteria.mjs";
+import { summarize } from "./lib/criteria.mjs";
 import axe from "./checks/axe.mjs";
 import axTree from "./checks/ax-tree.mjs";
 import contrast from "./checks/contrast.mjs";
@@ -15,49 +15,16 @@ import reflow from "./checks/reflow.mjs";
 import targets from "./checks/targets.mjs";
 
 const MODULES = [dom, axTree, axe, contrast, targets, inputModel, keyboard, reflow, forms];
-const USAGE = `usage: wcag.mjs <url|file.html> [options]
-  --viewport WxH      starting viewport, default 1280x800
-  --only a,b          run only these checks: ${MODULES.map((m) => m.id).join(", ")}
-  --skip a,b          skip these checks
-  --out FILE          write the full JSON report to FILE (default: stdout)
-  --media LIST        emulate media features, e.g. prefers-color-scheme=dark,prefers-reduced-motion=reduce
-  --interact          also submit empty forms (all non-GET requests blocked) to test error handling (3.3.1, 4.1.3)
-  --probe-keys        press single keys with nothing focused to detect shortcuts (2.1.4); can trigger page actions
-  --quiet             no human summary on stderr
-  --chrome PATH       Chromium-based browser binary (or CHROME_BIN)
-  --cdp PORT|URL      attach to a running browser instead of launching one
-  --list-criteria     print the 55 Level A and AA criteria and exit
-exit codes: 0 no failures, 2 failures found, 1 the run itself failed`;
+const USAGE = "usage: wcag.mjs <url|file.html>\nexit codes: 0 no failures, 2 failures found, 1 the run itself failed";
 
-function parse(argv) {
-	const o = { viewport: [1280, 800], only: null, skip: new Set(), out: null, quiet: false, chrome: null, cdp: null, target: null, probeKeys: false, interact: false, media: [] };
-	for (let i = 0; i < argv.length; i++) {
-		const a = argv[i];
-		const next = () => {
-			if (i + 1 >= argv.length) throw new Error(`${a} needs a value`);
-			return argv[++i];
-		};
-		if (a === "--viewport") o.viewport = next().split("x").map(Number);
-		else if (a === "--only") o.only = new Set(next().split(","));
-		else if (a === "--skip") next().split(",").forEach((s) => o.skip.add(s));
-		else if (a === "--out") o.out = next();
-		else if (a === "--quiet") o.quiet = true;
-		else if (a === "--probe-keys") o.probeKeys = true;
-		else if (a === "--interact") o.interact = true;
-		else if (a === "--media") o.media = next().split(",").map((p) => p.split("=")).map(([name, value]) => ({ name, value }));
-		else if (a === "--chrome") o.chrome = next();
-		else if (a === "--cdp") o.cdp = next();
-		else if (a === "--list-criteria") o.list = true;
-		else if (a === "--help" || a === "-h") o.help = true;
-		else if (a.startsWith("--")) throw new Error(`unknown option ${a}`);
-		else o.target = a;
-	}
-	const MEDIA = { "prefers-color-scheme": ["light", "dark"], "prefers-reduced-motion": ["reduce", "no-preference"], "forced-colors": ["active", "none"], "prefers-contrast": ["more", "less", "no-preference"] };
-	for (const m of o.media) if (!MEDIA[m.name]?.includes(m.value)) throw new Error(`--media: unsupported ${m.name}=${m.value}`);
-	if (o.viewport.length !== 2 || o.viewport.some((n) => !(n >= 200))) throw new Error("--viewport must look like 1280x800");
-	for (const id of [...(o.only ?? []), ...o.skip]) if (!MODULES.some((m) => m.id === id)) throw new Error(`unknown check "${id}"`);
-	return o;
-}
+const PASSES = [
+	{ name: "desktop", viewport: [1280, 800], media: [] },
+	{ name: "phone", viewport: [390, 844], media: [] },
+	{ name: "dark", viewport: [1280, 800], media: [{ name: "prefers-color-scheme", value: "dark" }] },
+	{ name: "reduced-motion", viewport: [1280, 800], media: [{ name: "prefers-reduced-motion", value: "reduce" }] },
+	{ name: "forced-colors", viewport: [1280, 800], media: [{ name: "forced-colors", value: "active" }] },
+];
+const REPORT_PATH = ".tmp/wcag/report.json";
 
 function toUrl(target) {
 	if (/^(https?|file|data):/i.test(target)) return target;
@@ -104,86 +71,94 @@ function dedupe(findings) {
 }
 
 function human(report) {
-	const err = (s = "") => process.stderr.write(s + "\n");
-	err(`wcag ${report.url}`);
-	err(`browser ${report.browser}, viewport ${report.viewport.join("x")}${report.media.length ? ", media " + report.media.map((m) => `${m.name}=${m.value}`).join(" ") : ""}`);
-	err();
-	for (const m of report.checks) err(`  ${m.error ? "ERROR" : "ok   "}  ${m.id.padEnd(12)} ${m.error ?? m.note ?? ""}`);
-	err();
+	const out = (line = "") => process.stdout.write(line + "\n");
+	out(`wcag ${report.url}`);
+	out(`browser ${report.browser}, passes ${report.passes.map((p) => p.name).join(", ")}`);
+	out();
+	for (const pass of report.passes) {
+		out(`pass ${pass.name} (${pass.viewport.join("x")}${pass.media.length ? ", " + pass.media.map((m) => `${m.name}=${m.value}`).join(" ") : ""})`);
+		for (const m of pass.checks) out(`  ${m.error ? "ERROR" : "ok   "}  ${m.id.padEnd(12)} ${m.error ?? m.note ?? ""}`);
+	}
+	out();
 	const t = report.criteria.totals;
-	err(`${t.fail} criteria with failures, ${t.review} to review by a person, ${t.clear} measured with no failures, ${t.partial} partly automated with no failures, ${t.manual} not testable by a script`);
+	out(`${t.fail} criteria with failures, ${t.review} to review by a person, ${t.clear} measured with no failures, ${t.partial} partly automated with no failures, ${t.manual} not testable by a script`);
 	const order = { fail: 0, review: 1 };
 	const list = [...report.findings].sort((a, b) => order[a.kind] - order[b.kind] || a.sc?.localeCompare(b.sc ?? "") || 0);
 	const shown = list.slice(0, 40);
 	for (const f of shown) {
-		err();
-		err(`${f.kind === "fail" ? "FAIL  " : "REVIEW"} ${f.sc ?? "-"}  ${f.check}`);
-		err(`   ${f.message}`);
-		err(`   ${f.selector}`);
-		if (f.snippet) err(`   ${f.snippet}`);
+		out();
+		out(`${f.kind === "fail" ? "FAIL  " : "REVIEW"} ${f.sc ?? "-"}  ${f.check}  [${f.passes.join(", ")}]`);
+		out(`   ${f.message}`);
+		out(`   ${f.selector}`);
+		if (f.snippet) out(`   ${f.snippet}`);
 	}
-	if (list.length > shown.length) err(`\n... ${list.length - shown.length} more in the JSON report`);
+	if (list.length > shown.length) out(`\n... ${list.length - shown.length} more in the JSON report`);
+	out(`\nfull report: ${REPORT_PATH}`);
 }
 
 async function main() {
-	const opts = parse(process.argv.slice(2));
-	if (opts.help) return void console.log(USAGE);
-	if (opts.list) {
-		for (const c of CRITERIA) console.log(`${c.num}\t${c.level}\t${c.since}\t${c.title}`);
-		return;
-	}
-	if (!opts.target) throw new Error(USAGE);
-	const url = toUrl(opts.target);
+	const target = process.argv[2];
+	if (!target || process.argv.length > 3) throw new Error(USAGE);
+	const url = toUrl(target);
 
-	const browser = await openBrowser({ chrome: opts.chrome, cdp: opts.cdp });
+	const browser = await openBrowser();
 	const page = await browser.newPage();
 	try {
-		await page.setViewport(opts.viewport[0], opts.viewport[1]);
-		if (opts.media.length) await page.emulateMedia(opts.media);
-		const nav = await page.goto(url);
-		await page.settle();
-		const ctx = { viewport: { width: opts.viewport[0], height: opts.viewport[1] }, url, probeKeys: opts.probeKeys, media: opts.media };
-		const active = MODULES.filter((m) => (!opts.only || opts.only.has(m.id)) && !opts.skip.has(m.id) && (!m.interactive || opts.interact || opts.only?.has(m.id)));
-		const findings = [];
-		const checks = [];
-		const ran = [];
-		for (const [index, mod] of active.entries()) {
-			if (index > 0) {
-				await page.send("Emulation.setDeviceMetricsOverride", { width: opts.viewport[0], height: opts.viewport[1], deviceScaleFactor: 1, mobile: false });
-				await page.goto(url);
-				await page.settle();
+		const passes = [];
+		const merged = new Map();
+		const covers = new Map();
+		let networkIdle = null;
+		for (const [passIndex, pass] of PASSES.entries()) {
+			await page.setViewport(pass.viewport[0], pass.viewport[1]);
+			await page.emulateMedia(pass.media);
+			const nav = await page.goto(url);
+			if (passIndex === 0) networkIdle = nav.networkIdle;
+			await page.settle();
+			const ctx = { viewport: { width: pass.viewport[0], height: pass.viewport[1] }, url, first: passIndex === 0, media: pass.media };
+			const active = MODULES.filter((m) => passIndex === 0 || !m.once);
+			const checks = [];
+			const found = [];
+			for (const [index, mod] of active.entries()) {
+				if (index > 0) {
+					await page.send("Emulation.setDeviceMetricsOverride", { width: pass.viewport[0], height: pass.viewport[1], deviceScaleFactor: 1, mobile: false });
+					await page.goto(url);
+					await page.settle();
+				}
+				try {
+					const res = await mod.run(page, ctx);
+					for (const f of res.findings) found.push(f);
+					checks.push({ id: mod.id, note: res.note, findings: res.findings.length });
+					if (!covers.has(mod.id)) covers.set(mod.id, { ...(mod.covers ?? {}), ...(res.covers ?? {}) });
+				} catch (e) {
+					checks.push({ id: mod.id, error: e.message });
+				}
 			}
-			try {
-				const res = await mod.run(page, ctx);
-				for (const f of res.findings) findings.push(f);
-				checks.push({ id: mod.id, note: res.note, findings: res.findings.length });
-				ran.push({ id: mod.id, covers: { ...(mod.covers ?? {}), ...(res.covers ?? {}) } });
-			} catch (e) {
-				checks.push({ id: mod.id, error: e.message });
+			passes.push({ name: pass.name, viewport: pass.viewport, media: pass.media, checks });
+			for (const f of dedupe(found)) {
+				const key = [f.sc, f.kind, f.check, f.selector, f.message].join("\u0000");
+				const seen = merged.get(key);
+				if (seen) seen.passes.push(pass.name);
+				else merged.set(key, { ...f, passes: [pass.name] });
 			}
 		}
-		const merged = dedupe(findings);
-		const criteria = summarize(merged, ran);
+		const findings = [...merged.values()];
+		const ran = [...covers].map(([id, c]) => ({ id, covers: c }));
+		const criteria = summarize(findings, ran);
 		const report = {
 			url,
 			browser: browser.product,
-			viewport: opts.viewport,
-			media: opts.media,
-			networkIdle: nav.networkIdle,
+			networkIdle,
 			startedAt: new Date().toISOString(),
-			checks,
+			passes,
 			criteria,
-			findings: merged,
+			findings,
 			pageErrors: page.consoleErrors.slice(0, 10),
 			limits: "A script cannot judge meaning. Rows marked manual need a person; rows marked review are candidates. Screen reader output, captions accuracy, alt-text quality, and cognitive load are never settled here.",
 		};
-		const json = JSON.stringify(report, null, "\t");
-		if (opts.out) {
-			mkdirSync(dirname(resolve(opts.out)), { recursive: true });
-			writeFileSync(opts.out, json + "\n");
-		} else process.stdout.write(json + "\n");
-		if (!opts.quiet) human(report);
-		const broken = checks.filter((c) => c.error).length;
+		mkdirSync(dirname(resolve(REPORT_PATH)), { recursive: true });
+		writeFileSync(REPORT_PATH, JSON.stringify(report, null, "	") + "\n");
+		human(report);
+		const broken = passes.some((p) => p.checks.some((c) => c.error));
 		process.exitCode = broken ? 1 : criteria.totals.fail > 0 ? 2 : 0;
 	} finally {
 		await page.close();

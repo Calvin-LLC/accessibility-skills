@@ -20,8 +20,8 @@ const CANDIDATES = [
 	"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
 ];
 
-function findChrome(explicit) {
-	const wanted = explicit ?? process.env.CHROME_BIN;
+function findChrome() {
+	const wanted = process.env.CHROME_BIN;
 	if (wanted) {
 		if (!existsSync(wanted)) throw new Error(`browser not found: ${wanted}`);
 		return wanted;
@@ -39,7 +39,7 @@ function findChrome(explicit) {
 			}
 		}
 	}
-	throw new Error("no Chromium-based browser on PATH; set CHROME_BIN or pass --chrome <path>");
+	throw new Error("no Chromium-based browser on PATH; set CHROME_BIN to its path");
 }
 
 function killGroup(child) {
@@ -96,41 +96,29 @@ function waitForFile(path, child, timeoutMs) {
 	});
 }
 
-async function endpointFor(cdpArg) {
-	if (/^wss?:\/\//.test(cdpArg)) return cdpArg;
-	const port = /^\d+$/.test(cdpArg) ? cdpArg : new URL(cdpArg).port;
-	const res = await fetch(`http://127.0.0.1:${port}/json/version`);
-	if (!res.ok) throw new Error(`DevTools endpoint on port ${port} answered ${res.status}`);
-	return (await res.json()).webSocketDebuggerUrl;
-}
-
-export async function openBrowser({ chrome, cdp: cdpArg } = {}) {
+export async function openBrowser() {
 	let child = null;
 	let profile = null;
 	let endpoint;
-	if (cdpArg) {
-		endpoint = await endpointFor(cdpArg);
-	} else {
-		const bin = findChrome(chrome);
-		profile = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "wcag-profile-"));
-		const args = [
-			"--headless=new",
-			"--remote-debugging-port=0",
-			`--user-data-dir=${profile}`,
-			"--no-first-run",
-			"--no-default-browser-check",
-			"--disable-extensions",
-			"--disable-background-networking",
-			"--hide-scrollbars=false",
-			"--force-color-profile=srgb",
-			"about:blank",
-		];
-		if (process.getuid?.() === 0 || process.env.WCAG_NO_SANDBOX) args.splice(1, 0, "--no-sandbox");
-		child = spawn(bin, args, { stdio: "ignore", detached: process.platform !== "win32" });
-		killOnExit(child, profile);
-		const [port, path] = await waitForFile(join(profile, "DevToolsActivePort"), child, 20000);
-		endpoint = `ws://127.0.0.1:${port}${path}`;
-	}
+	const bin = findChrome();
+	profile = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "wcag-profile-"));
+	const args = [
+		"--headless=new",
+		"--remote-debugging-port=0",
+		`--user-data-dir=${profile}`,
+		"--no-first-run",
+		"--no-default-browser-check",
+		"--disable-extensions",
+		"--disable-background-networking",
+		"--hide-scrollbars=false",
+		"--force-color-profile=srgb",
+		"about:blank",
+	];
+	if (process.getuid?.() === 0 || process.env.WCAG_NO_SANDBOX) args.splice(1, 0, "--no-sandbox");
+	child = spawn(bin, args, { stdio: "ignore", detached: process.platform !== "win32" });
+	killOnExit(child, profile);
+	const [port, path] = await waitForFile(join(profile, "DevToolsActivePort"), child, 20000);
+	endpoint = `ws://127.0.0.1:${port}${path}`;
 	const connection = await Connection.open(endpoint);
 	const version = await connection.send("Browser.getVersion");
 	return {
