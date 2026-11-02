@@ -3,7 +3,7 @@ name: wcag
 description: Use when checking or fixing web accessibility (WCAG 2.2 A/AA). Measures a live page in Chromium, then fixes with rules and patterns.
 license: MIT
 metadata:
-  version: "3.0.0"
+  version: "3.0.1"
 ---
 
 # WCAG
@@ -21,7 +21,7 @@ node <skill-dir>/scripts/wcag.mjs <url|file.html> [options]
 ```
 
 Launches headless Chromium (any Chromium-based browser on `PATH`, or
-`CHROME_BIN`), runs nine checks, prints a JSON report on stdout and a short
+`CHROME_BIN`), runs nine checks (`forms` only with `--interact`), prints a JSON report on stdout and a short
 summary on stderr. Exit code: `0` no failures, `2` failures found, `1` the run
 broke.
 
@@ -54,7 +54,9 @@ login, ask the user to sign in inside a browser started with
 | `forms` | Empty submit with writes blocked: error text, association, `aria-invalid`, live-region announcement | 3.3.1, 4.1.3 |
 | `axe` | axe-core 4.14 with the `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa` tags. Contrast and target size are left to the checks above | many |
 
-`forms` runs only with `--interact`.
+`forms` runs only with `--interact`. In a default run the report has 10
+`no-failures-found`, 31 `partial-no-failures`, and 14 `manual` rows. `--interact`
+moves 3.3.1, 3.3.3, and 4.1.3 from `manual` to `partial-no-failures`.
 
 ## Read the report
 
@@ -135,4 +137,5 @@ WCAG 2.2 has 86 success criteria; Level A plus AA is 55 (31 A, 24 AA).
 4.1.1 Parsing was removed. Large text is 24 px, or 18.66 px bold. Normal text
 needs 4.5:1, large text and UI components 3:1. Targets are 24 by 24 CSS px
 unless an exception applies. `px` font sizes are not failures, and several
-`h1` elements are not failures.
+`h1` elements are not failures. WCAG 3.0 is a Working Draft (10 September 2026)
+that W3C says does not replace WCAG 2, so this skill targets 2.2.

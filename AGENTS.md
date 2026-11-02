@@ -1,8 +1,8 @@
-# wcag
+# accessibility-skills
 
-Portable accessibility skill. `SKILL.md` is the front door. `scripts/` measures
-a rendered page in Chromium over the DevTools protocol. `references/` holds the
-fix rules.
+The repo root is the `wcag` skill. `SKILL.md` is the front door. `scripts/`
+measures a rendered page in Chromium over the DevTools protocol. `references/`
+holds the fix rules.
 
 ## Layout
 
@@ -52,3 +52,8 @@ browser. No npm dependencies.
 - axe-core is pinned in `scripts/vendor/`. To update: `npm pack axe-core`,
   copy `axe.min.js` and `LICENSE`, rerun `verify.mjs`.
 - Regenerate `data/criteria.json` from the W3C JSON, never by hand.
+- The runner leaves no browser process and no temp profile behind, including
+  after Ctrl-C or SIGTERM. `scripts/lib/browser.mjs` starts Chromium in its own
+  process group and kills the whole group on exit. After a change there, run
+  the checker, then confirm `ps` shows no `wcag-profile` browser and the temp
+  directory holds no `wcag-profile-*` folder.
