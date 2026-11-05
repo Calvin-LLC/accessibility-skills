@@ -1,3 +1,6 @@
+SUPERCEEDED BY https://github.com/Calvin-LLC/skills
+
+
 # wcag
 
 A skill that checks a web page against WCAG 2.2 Level A and AA in a real
